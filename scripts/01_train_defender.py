@@ -58,14 +58,30 @@ def main() -> None:
     if not data_path.is_absolute():
         data_path = attacker_run.parent.parent / data_path
 
+    probe_cfg = cfg.get("leakage_probe", {})
+    probe_enabled = probe_cfg.get("enabled", False)
+
     print(f"=== loading A-set training traces from {data_path} (n_train={cfg['data']['n_train']}) ===")
     with h5py.File(data_path, "r") as f:
         profiling_traces = np.array(f["Profiling_traces/traces"], dtype=np.int8)
+        profiling_meta = np.array(f["Profiling_traces/metadata"]) if probe_enabled else None
     with np.load(attacker_run / "split_indices.npz") as split:
         a_idx = split["a"]
     n_train = min(cfg["data"]["n_train"], len(a_idx))
-    x_train = profiling_traces[a_idx[:n_train]].astype(np.float32)
+    train_idx = a_idx[:n_train]
+    x_train = profiling_traces[train_idx].astype(np.float32)
     print(f"  x_train shape={x_train.shape}")
+
+    leakage_labels = None
+    if probe_enabled:
+        from src.leakage_probe import compute_leakage_labels
+
+        mask_index = probe_cfg.get("mask_index", 0)
+        target_byte = attacker_cfg["data"]["target_byte"]
+        meta_train = profiling_meta[train_idx]
+        leakage_labels = compute_leakage_labels(meta_train, target_byte, mask_index)
+        print(f"=== leakage_probe enabled: mask_index={mask_index}, "
+              f"channels={list(leakage_labels.keys())} (CLAUDE.md A.8/A.9, D04) ===")
 
     noise_std = cfg["generator"].get("noise_std", 0.0)
     print(f"=== building generator (epsilon={cfg['generator']['epsilon']}, noise_std={noise_std}) ===")
@@ -86,6 +102,9 @@ def main() -> None:
         lambda_l2=loss_cfg.get("lambda_l2", 0.005),
         lambda_smooth=loss_cfg.get("lambda_smooth", 0.002),
         lambda_entropy=loss_cfg.get("lambda_entropy", 0.1),
+        leakage_labels=leakage_labels,
+        lambda_leakage=loss_cfg.get("lambda_leakage", 0.0),
+        leakage_temperature=loss_cfg.get("leakage_temperature", 50.0),
     )
 
     run_dir = Path(args.runs_dir) / f"{cfg['exp_id']}_{datetime.now():%Y%m%d_%H%M%S}_{os.getpid()}"

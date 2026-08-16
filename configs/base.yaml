@@ -18,6 +18,12 @@ train:
     lambda_l2: 0.005
     lambda_smooth: 0.002
     lambda_entropy: 0.1
+    lambda_leakage: 0.0      # 0.0 = off (D01/D02/D03 behavior); see CLAUDE.md A.8/A.9, D04
+    leakage_temperature: 50.0
 
 data:
   n_train: 15000
+
+leakage_probe:
+  enabled: false  # must be true to compute masked_value/mask_value labels for lambda_leakage
+  mask_index: 0   # established value for ASCAD.h5/desync0, see dlsca-attack-v2 CLAUDE.md B.6

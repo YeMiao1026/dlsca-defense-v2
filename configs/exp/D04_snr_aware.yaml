@@ -1,0 +1,33 @@
+exp_id: D04_snr_aware
+description: >
+  D04：在D01的loss上加一項可微分的洩漏抑制項（src/metrics/leakage_loss.py），
+  直接對兩個已知洩漏點（遮罩後的值point~517、遮罩本身point~156）的
+  CPA式平方相關係數（Hamming weight代理）取soft-max後懲罰，取代單純
+  「讓E01單次query出錯」這個confuse-only目標——見CLAUDE.md附錄A.8/A.9的
+  SNR診斷發現：D01在517點壓制得跟高斯噪訊一樣好甚至更好，但156點幾乎沒動，
+  這是七次D02/D03嘗試都打不贏高斯基準線的真正原因。
+
+  刻意先在noise_std=0（純確定性產生器，跟D01一致）上測試，不跟D03的隨機性
+  疊加——這樣如果有效，可以確定是loss本身的功勞，不是隨機性疊加的功勞；
+  如果無效，要注意這個loss對「純仿射縮放/平移」的擾動天生不敏感
+  （平方相關係數對任何非零仿射變換不變，見tests/test_leakage_loss.py的
+  test_leakage_loss_decreases_when_independent_noise_is_added註解）——CNN
+  必須學會利用其他時間點的資訊去建構一個真正的解相關訊號，而不能只是縮放/
+  平移洩漏點本身；如果CNN做不到這件事，下一步應該改成搭配D03的
+  AlwaysOnStochasticNoise（generator.noise_std>0）一起用，而不是繼續加大
+  lambda_leakage。
+
+  其餘設定（架構、epsilon、confuse/l2/smooth/entropy權重、n_train/epochs）
+  全部沿用D01基準不變。
+
+seed: 1234
+attacker: e01_baseline
+
+leakage_probe:
+  enabled: true
+  mask_index: 0
+
+train:
+  loss:
+    lambda_leakage: 0.05
+    leakage_temperature: 50.0

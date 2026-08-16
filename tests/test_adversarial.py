@@ -87,3 +87,33 @@ def test_fit_returns_one_history_row_per_epoch_when_no_early_stop():
     assert len(history) == 3
     assert [row["epoch"] for row in history] == [1, 2, 3]
     assert all("total" in row and "confuse" in row for row in history)
+
+
+def test_fit_with_lambda_leakage_zero_omits_leak_keys_even_if_labels_are_passed():
+    # lambda_leakage=0.0 must be a byte-identical no-op, including not even
+    # computing the leak_* channels -- not just zero-weighting them.
+    generator = build_generator(trace_len=TRACE_LEN, epsilon=6.0)
+    bridge = _DummyBridge()
+    x_train = np.random.default_rng(5).normal(0, 20, size=(8, TRACE_LEN)).astype(np.float32)
+    labels = {"masked_value": np.random.default_rng(5).integers(0, 256, size=8)}
+
+    history = fit(
+        generator, bridge, x_train, epochs=1, batch_size=4, lr=1e-3, seed=0, patience=5,
+        leakage_labels=labels, lambda_leakage=0.0,
+    )
+    assert not any(k.startswith("leak_") for k in history[0])
+
+
+def test_fit_with_lambda_leakage_positive_logs_leak_channels():
+    generator = build_generator(trace_len=TRACE_LEN, epsilon=6.0)
+    bridge = _DummyBridge()
+    rng = np.random.default_rng(6)
+    x_train = rng.normal(0, 20, size=(16, TRACE_LEN)).astype(np.float32)
+    labels = {"masked_value": rng.integers(0, 256, size=16), "mask_value": rng.integers(0, 256, size=16)}
+
+    history = fit(
+        generator, bridge, x_train, epochs=1, batch_size=4, lr=1e-3, seed=0, patience=5,
+        leakage_labels=labels, lambda_leakage=0.1,
+    )
+    assert "leak_masked_value" in history[0]
+    assert "leak_mask_value" in history[0]

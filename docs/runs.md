@@ -30,3 +30,7 @@ D03（在D01基礎上疊加AlwaysOnStochasticNoise）三點結論：同D02一樣
 | 遮罩本身 r_out（point 156，跟plaintext/key無關） | 1.33 | 1.28（-4.2%，峰值還偏移到182） | 1.18（-11.5%，峰值沒動） |
 
 **GAN在第一個洩漏點壓得比高斯還兇，但在第二個洩漏點幾乎沒動**——這才是D01效率不如高斯噪訊的真正機制：梯度下降找到的擾動集中火力在對凍結攻擊者最敏感的那一個點，沒有覆蓋到攻擊者實際需要的另一個洩漏點；高斯噪訊逐點獨立無差別加噪，天生同時覆蓋兩者。詳見 `CLAUDE.md` 附錄A.8/A.9。
+
+## D04（設計完成，尚未正式跑）
+
+`src/metrics/leakage_loss.py` 新增可微分洩漏抑制loss（CPA式平方相關係數 + soft-max），`configs/exp/D04_snr_aware.yaml` 已寫好（`lambda_leakage=0.05`，其餘沿用D01，`noise_std=0`維持確定性）。小規模smoke test（300條/2epoch，真實E01攻擊者）確認管線接線正確，`tests/`36個測試全過。**尚未跑正式15000條/40epoch GPU實驗**，詳見 `CLAUDE.md` 附錄A.9/A.10。
