@@ -1,0 +1,10 @@
+exp_id: D03_noise_high
+description: >
+  D03 隨機性測試 P3：同D03_noise_low，noise_std拉到0.3
+  （相對[-1,1]的tanh-bounded delta量級已經算大，預期擾動形狀會被隨機性主導）。
+
+seed: 1234
+attacker: e01_baseline
+
+generator:
+  noise_std: 0.3

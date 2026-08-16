@@ -67,8 +67,9 @@ def main() -> None:
     x_train = profiling_traces[a_idx[:n_train]].astype(np.float32)
     print(f"  x_train shape={x_train.shape}")
 
-    print(f"=== building generator (epsilon={cfg['generator']['epsilon']}) ===")
-    generator = build_generator(trace_len=x_train.shape[1], epsilon=cfg["generator"]["epsilon"])
+    noise_std = cfg["generator"].get("noise_std", 0.0)
+    print(f"=== building generator (epsilon={cfg['generator']['epsilon']}, noise_std={noise_std}) ===")
+    generator = build_generator(trace_len=x_train.shape[1], epsilon=cfg["generator"]["epsilon"], noise_std=noise_std)
 
     loss_cfg = cfg["train"].get("loss", {})
     print("\n=== start adversarial training ===")

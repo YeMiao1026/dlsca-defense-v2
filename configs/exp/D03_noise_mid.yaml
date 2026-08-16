@@ -1,0 +1,9 @@
+exp_id: D03_noise_mid
+description: >
+  D03 隨機性測試 P2：同D03_noise_low，noise_std拉到0.15。
+
+seed: 1234
+attacker: e01_baseline
+
+generator:
+  noise_std: 0.15

@@ -6,6 +6,7 @@ seed: 1234
 
 generator:
   epsilon: 6.0
+  noise_std: 0.0  # 0.0 = deterministic (D01/D02 behavior); see AlwaysOnStochasticNoise, CLAUDE.md A.5/D03
 
 train:
   batch_size: 64

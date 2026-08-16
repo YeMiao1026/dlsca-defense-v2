@@ -1,0 +1,13 @@
+exp_id: D03_noise_low
+description: >
+  D03 隨機性測試 P1：在D01（唯一勝過隨機基準的配方，滿正則化 lambda_l2=0.005/
+  lambda_smooth=0.002）的基礎上，加入noise_std=0.05的AlwaysOnStochasticNoise，
+  測試附錄A.5的假設——D01效率不如高斯噪訊，可能是因為擾動是輸入軌跡的確定性
+  函數（同一條軌跡永遠得到同一個擾動），跟高斯噪訊的獨立隨機性有結構性差異。
+  其餘設定（架構、epsilon、loss權重、n_train/epochs）全部沿用D01基準不變。
+
+seed: 1234
+attacker: e01_baseline
+
+generator:
+  noise_std: 0.05

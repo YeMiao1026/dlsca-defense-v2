@@ -11,12 +11,24 @@ One deliberate deviation: the original used `layers.Lambda(lambda z: epsilon
 registered layer, so `generator.save()` / `keras.models.load_model()` round-trip
 without that workaround. This changes nothing about what the architecture
 computes.
+
+A second addition (`AlwaysOnStochasticNoise`, `noise_std` param) is not part
+of the original architecture — see CLAUDE.md appendix A.5/D03. D01/D02 showed
+every loss-weight variant produces a *deterministic* function of the input
+trace (same trace -> same perturbation, every call), unlike i.i.d. Gaussian
+noise. This layer injects independent per-call Gaussian noise into the
+bounded delta so the generator's output stops being a pure function of the
+input, to test whether that's what was limiting D01/D02's efficiency relative
+to the Gaussian baseline. It is opt-in (`noise_std=0.0` by default, which
+skips inserting the layer entirely) so existing D01/D02 configs and their
+saved graphs are unaffected.
 """
 
 from __future__ import annotations
 
 import keras
 from keras import layers
+import tensorflow as tf
 
 
 @keras.saving.register_keras_serializable(package="dlsca_defense")
@@ -36,10 +48,37 @@ class BoundedPerturbation(layers.Layer):
         return config
 
 
-def build_generator(trace_len: int, epsilon: float = 6.0) -> keras.Model:
+@keras.saving.register_keras_serializable(package="dlsca_defense")
+class AlwaysOnStochasticNoise(layers.Layer):
+    """Adds N(0, noise_std^2) to its input and clips back to [-1, 1] — unlike
+    Keras's built-in `GaussianNoise`, this samples fresh noise on every call
+    regardless of the `training` flag, so the same input trace produces a
+    different perturbation each time the generator runs (training step or
+    inference/generation alike).
+    """
+
+    def __init__(self, noise_std: float, **kwargs):
+        super().__init__(**kwargs)
+        self.noise_std = float(noise_std)
+
+    def call(self, inputs):
+        noise = tf.random.normal(tf.shape(inputs), stddev=self.noise_std)
+        return tf.clip_by_value(inputs + noise, -1.0, 1.0)
+
+    def get_config(self):
+        config = super().get_config()
+        config.update({"noise_std": self.noise_std})
+        return config
+
+
+def build_generator(trace_len: int, epsilon: float = 6.0, noise_std: float = 0.0) -> keras.Model:
     """Conv1D perturbation generator: raw trace (trace_len, 1) in, bounded
     additive perturbation (trace_len, 1) in [-epsilon, epsilon] out. Caller
     adds the output to the raw trace to get the defended waveform.
+
+    `noise_std` (default 0.0, no-op) injects independent per-call Gaussian
+    noise into the bounded delta before it's scaled by epsilon — see
+    `AlwaysOnStochasticNoise` above and CLAUDE.md appendix A.5/D03.
     """
     inp = layers.Input(shape=(trace_len, 1), name="trace_input")
 
@@ -58,6 +97,9 @@ def build_generator(trace_len: int, epsilon: float = 6.0) -> keras.Model:
     x = layers.BatchNormalization(name="def_bn4")(x)
 
     x = layers.Conv1D(1, 3, padding="same", activation="tanh", name="def_tanh_delta")(x)
+
+    if noise_std > 0.0:
+        x = AlwaysOnStochasticNoise(noise_std, name="stochastic_noise")(x)
 
     perturb = BoundedPerturbation(epsilon, name="bounded_perturbation")(x)
 
