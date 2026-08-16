@@ -1,0 +1,9 @@
+runs/
+results/
+__pycache__/
+*.pyc
+*.h5
+*.keras
+.venv/
+.pytest_cache/
+.claude/
