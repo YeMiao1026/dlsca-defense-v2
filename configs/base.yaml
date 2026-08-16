@@ -1,0 +1,22 @@
+# Shared defaults, overridden by configs/attacker/*.yaml -> configs/exp/*.yaml
+# -> CLI --override (see src/config.py, CLAUDE.md §5). Values below are the
+# original train_improved_defender.py's hyperparameters, unchanged (CLAUDE.md §6).
+
+seed: 1234
+
+generator:
+  epsilon: 6.0
+
+train:
+  batch_size: 64
+  epochs: 40
+  lr: 5.0e-4
+  patience: 5
+  loss:
+    lambda_confuse: 1.0
+    lambda_l2: 0.005
+    lambda_smooth: 0.002
+    lambda_entropy: 0.1
+
+data:
+  n_train: 15000

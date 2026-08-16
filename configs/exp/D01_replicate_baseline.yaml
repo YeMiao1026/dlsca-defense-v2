@@ -1,0 +1,10 @@
+exp_id: D01_replicate_baseline
+description: >
+  復刻舊版對抗擾動產生器（train_improved_defender.py，無discriminator），
+  換掉兩個已知問題後重新驗證（CLAUDE.md §4）：凍結攻擊者換成 dlsca-attack-v2
+  的 E01（N_TGE=475，已驗證有效，取代原本幾乎沒訓練起來的 cnnd_paper_model.h5），
+  評估改用攻擊端 Stage B 介面的 100-run GE/N_TGE（取代舊版的 single-run
+  full_ranks()）。產生器架構與 loss 權重原封不動沿用舊版，見 §6。
+
+seed: 1234
+attacker: e01_baseline

@@ -1,0 +1,5 @@
+# dlsca-attack-v2's E01 (clean baseline, cnn_light, desync0) — the mandatory
+# neutral attacker for this project (CLAUDE.md §3): never hardened against
+# any defense during its own training, unlike E02 (Gaussian-augmented).
+attacker:
+  run: /home/yemiao1026/Final_Project/runs/E01_baseline_clean_20260816_1302
