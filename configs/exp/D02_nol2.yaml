@@ -1,0 +1,12 @@
+exp_id: D02_nol2
+description: >
+  D02 loss權重掃描 P4：只拿掉L2懲罰（lambda_l2=0），
+  lambda_smooth維持D01基準的0.002不變。跟D02_nosmooth互補，
+  用來單獨分離L2這一項（限制擾動幅度）的影響。
+
+seed: 1234
+attacker: e01_baseline
+
+train:
+  loss:
+    lambda_l2: 0.0

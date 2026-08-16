@@ -1,0 +1,13 @@
+exp_id: D02_nosmooth
+description: >
+  D02 loss權重掃描 P3：只拿掉smoothness懲罰（lambda_smooth=0），
+  lambda_l2維持D01基準的0.005不變。用來單獨分離smooth這一項的影響——
+  附錄A的假設特別點名smoothness懲罰可能是讓擾動變得「軌跡間過度一致」
+  的主因，這個config用來單獨驗證。
+
+seed: 1234
+attacker: e01_baseline
+
+train:
+  loss:
+    lambda_smooth: 0.0

@@ -1,0 +1,14 @@
+exp_id: D02_noreg
+description: >
+  D02 loss權重掃描 P2：完全拿掉l2/smooth兩項懲罰（各設為0），只剩
+  confuse+entropy在驅動訓練。跟D02_lowreg互為對照：如果拿掉全部形狀約束後
+  效率明顯改善，支持附錄A的假設；如果沒有明顯差異，代表問題不在
+  smooth/l2這兩個維度。epsilon仍維持6.0作為唯一的擾動幅度上限。
+
+seed: 1234
+attacker: e01_baseline
+
+train:
+  loss:
+    lambda_l2: 0.0
+    lambda_smooth: 0.0

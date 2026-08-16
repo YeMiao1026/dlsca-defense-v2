@@ -1,0 +1,16 @@
+exp_id: D02_lowreg
+description: >
+  D02 loss權重掃描 P1：l2/smooth兩項權重各降到D01基準的1/10
+  （lambda_l2 0.005->0.0005, lambda_smooth 0.002->0.0002），測試附錄A的假設——
+  D01的擾動可能因為smooth/l2懲罰太重，被壓成軌跡間高度一致、低變異的形狀，
+  被攻擊者的逐點Standardizer/MinMax部分吸收，效率遠不如同PSR的高斯噪訊。
+  架構、epsilon、confuse/entropy權重、n_train/epochs全部沿用D01基準不變，
+  只動這兩個維度。
+
+seed: 1234
+attacker: e01_baseline
+
+train:
+  loss:
+    lambda_l2: 0.0005
+    lambda_smooth: 0.0002
