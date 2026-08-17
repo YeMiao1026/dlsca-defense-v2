@@ -34,3 +34,14 @@ D03（在D01基礎上疊加AlwaysOnStochasticNoise）三點結論：同D02一樣
 ## D04（設計完成，尚未正式跑）
 
 `src/metrics/leakage_loss.py` 新增可微分洩漏抑制loss（CPA式平方相關係數 + soft-max），`configs/exp/D04_snr_aware.yaml` 已寫好（`lambda_leakage=0.05`，其餘沿用D01，`noise_std=0`維持確定性）。小規模smoke test（300條/2epoch，真實E01攻擊者）確認管線接線正確，`tests/`36個測試全過。**尚未跑正式15000條/40epoch GPU實驗**，詳見 `CLAUDE.md` 附錄A.9/A.10。
+
+## TVLA檢查（`scripts/04_check_tvla.py`，根據方向.md claim①）
+
+Bit-split TVLA（8個bit逐bit Welch t-test取最壞值，門檻`|t|>=4.5`），對D01與高斯σ=0.25（PSR≈0.023-0.025）在兩個已知洩漏頻道上檢查：
+
+| 頻道 | clean（正對照組） | GAN-defended | Gaussian-defended |
+|---|---|---|---|
+| masked_value | 71.73 → 洩漏 | 67.61 → 洩漏 | 68.80 → 洩漏 |
+| mask_value | 52.82 → 洩漏 | 52.98 → 洩漏（比clean還高） | 50.70 → 洩漏 |
+
+**全部爆表**，門檻4.5的11-16倍，降幅只有5-10%。跟方向.md的預測幾乎逐字命中——兩種防禦在這個PSR成本範圍內都沒有達到TVLA意義下的安全，只是讓特定攻擊模型的單次分類變困難，底層model-agnostic洩漏幾乎原封不動。詳見 `CLAUDE.md` 附錄A.11。

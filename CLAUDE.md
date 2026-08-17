@@ -269,3 +269,31 @@ GAN防禦後:        1.2751 @ point 182（-4.2%，峰值位置還偏移了，代
 - **正式跑D04**：`configs/exp/D04_snr_aware.yaml`（GPU，15000條/40epoch），完成後用攻擊端Stage B介面正式評估、跟D01（GE@9000=111.84）及同PSR高斯基準線比較。
 - 如果D04的GE明顯優於D01但還是打不贏高斯基準線，下一步是重新跑一次`--override generator.noise_std=0.05`（或類似）疊加D03已驗證過的隨機性層，驗證上一段提到的「CNN跨欄位能力不夠、需要真隨機性搭配」這個備案假設。
 - 如果D04本身就找到一個能打平/贏過高斯基準線的PSR點，才進入D05（原D04，三方比較圖）。
+
+### A.11 TVLA檢查——方向.md的預測完全命中，「爆表」不是比喻
+
+根據 `B11209017/方向.md` claim①的建議，新增 `scripts/04_check_tvla.py`：對兩個已知洩漏頻道（`masked_value`、`mask_value`，跟SNR診斷附錄A.8同一組）逐bit做Welch t-test（`dlsca-attack-v2/src/metrics/leakage.py::t_test`，跟SNR診斷同一種cross-repo引用方式），掃過8個bit取最壞（|t|最大）的那個，對照TVLA慣例門檻`|t|>=4.5`。
+
+**ASCAD的Attack_traces沒有重複相同明文的「fixed」採集組**，所以做不了教科書等級的fixed-vs-random明文TVLA；改用SCA領域常見的替代做法——「specific」TVLA：用已知中間值的某個bit把軌跡切成兩組再做t檢定，等於單bit版的DPA/leakage detection，跟SNR/NICV同樣是model-agnostic（不涉及任何訓練模型）。
+
+**結果**（D01 vs 高斯σ=0.25，PSR≈0.023-0.025同一組防禦後波形）：
+
+```
+channel: masked_value（point 517附近）
+  clean（正對照組）    worst |t| = 71.73   -> LEAKAGE DETECTED
+  GAN-defended         worst |t| = 67.61   -> LEAKAGE DETECTED
+  Gaussian-defended    worst |t| = 68.80   -> LEAKAGE DETECTED
+
+channel: mask_value（point 149附近）
+  clean（正對照組）    worst |t| = 52.82   -> LEAKAGE DETECTED
+  GAN-defended         worst |t| = 52.98   -> LEAKAGE DETECTED（比clean還高！）
+  Gaussian-defended    worst |t| = 50.70   -> LEAKAGE DETECTED
+```
+
+**跟方向.md的預測幾乎逐字命中**：「這個實驗很可能給你們負面結果...洩漏根本沒減少，只是位置被搬走了...TVLA大概率仍然爆表」——確實爆表，而且不是差一點點：門檻是4.5，兩個防禦、兩個頻道量出來的|t|全部落在50-72之間，是門檻的11到16倍，GAN跟Gaussian從clean的71.73/52.82只降到67-69/51-53，降幅在5-10%之間，遠遠不足以讓|t|掉到門檻以下。**mask_value頻道上GAN甚至比clean的|t|還高**，等於這個bit的可分性完全沒有被觸碰。
+
+**這個結果比SNR診斷（附錄A.8）更嚴厲，也補上了一塊SNR沒講清楚的東西**：SNR診斷看的是「峰值降了多少百分比」（GAN在masked_value降了33%，看起來像是有實質壓制），但TVLA用的是「絕對可分性夠不夠低到偵測不到」這個security-evaluation的標準二元判準——即使SNR峰值降了三成，剩下的七成在TVLA的尺度下仍然是壓倒性的洩漏，跟「有沒有真的防住」完全是兩回事。**這正是方向.md claim①一開始就講的不對稱：安全性主張只能被證偽，做SNR/PI這類連續指標容易讓人誤以為「有改善=有防護」，TVLA用的是攻防評估慣用的二元門檻，比較不會製造這種錯覺。**
+
+**這對整個防禦敘事的意義**：不只是「GAN輸給高斯」，是「在我們目前測過的PSR成本範圍內，GAN跟高斯這兩種手法都沒有真正達到TVLA意義下的安全——它們都只是讓某一個特定攻擊模型的single-query分類變困難，底層的model-agnostic洩漏幾乎原封不動」。這比D01-D04單純比較「誰的GE比較低」更根本，也更貼近方向.md推薦的Route A論述核心（「失效是資訊理論的，不是工程的」）——現在有TVLA這個獨立、model-agnostic的證據支撐這句話，不只是靠SNR的間接推論。
+
+**尚未做、留待後續**：目前只測了一個PSR點（高斯σ=0.25），還沒掃過附錄C.3整條高斯曲線去看TVLA會不會在更高成本（例如σ=1.5，那個讓GE完全不收斂的門檻點）真的通過門檻——如果連σ=1.5都還是爆表，代表「用等功率噪訊/擾動達到TVLA意義下的安全」在這個資料集上的成本可能高到不切實際，這本身會是一個值得寫進報告的量化結論。
