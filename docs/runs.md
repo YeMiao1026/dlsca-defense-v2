@@ -62,3 +62,16 @@ Bit-split TVLA（8個bit逐bit Welch t-test取最壞值，門檻`|t|>=4.5`），
 | 3.0（最高成本點） | 0.2674 | 20.28 | 16.11 |
 
 連PSR最高的點都還差門檻3.5-4.5倍。log-log冪律外插估計要 sigma_ratio≈294-396 才會壓到門檻以下——這個外插範圍遠超實測（0.1-3.0），精確度不能太當真，但量級本身（要淹沒訊號到近300倍原始振幅）已經足以說明：單純加噪訊要達到TVLA級安全，成本高到不切實際。詳見 `CLAUDE.md` 附錄A.12。
+
+## D03注入熵直接測量（`scripts/05_measure_injected_entropy.py`）
+
+不重跑訓練，對同一批固定的乾淨軌跡重複呼叫已訓練好的D03 `generator.keras` 30次，測量兩個已知洩漏點（`masked_value` point 517、`mask_value` point 156）上的重複間變異數，換算成bits：
+
+| run | noise_std | masked_value bits | mask_value bits | GE@9000（已有數據） |
+|---|---|---|---|---|
+| D01 | 0 | -inf（精確0，正對照組） | -inf | 111.84 |
+| D03_noise_low | 0.05 | 0.31 | 0.22 | 119.54 |
+| D03_noise_mid | 0.15 | 1.87 | 1.90 | 138.30 |
+| D03_noise_high | 0.30 | 2.84 | 2.86 | 137.14 |
+
+理論值（noise_std×epsilon）幾乎完全對上實測std，確認熵確實有被注入且打在對的點上。**但熵單調上升、GE卻單調變差**——不是「隨機性沒打對地方」，是打對了地方也沒用，原因尚未解開，誠實記錄為開放問題。詳見 `CLAUDE.md` 附錄A.13。
