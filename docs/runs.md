@@ -75,3 +75,7 @@ Bit-split TVLA（8個bit逐bit Welch t-test取最壞值，門檻`|t|>=4.5`），
 | D03_noise_high | 0.30 | 2.84 | 2.86 | 137.14 |
 
 理論值（noise_std×epsilon）幾乎完全對上實測std，確認熵確實有被注入且打在對的點上。**但熵單調上升、GE卻單調變差**——不是「隨機性沒打對地方」，是打對了地方也沒用，原因尚未解開，誠實記錄為開放問題。詳見 `CLAUDE.md` 附錄A.13。
+
+## D05（設計完成，尚未正式跑）
+
+`src/generator/universal_perturber.py::UniversalTemplate` 新增通用擾動模板架構（單一可訓練向量、輸出跟輸入軌跡內容無關，對每一條軌跡廣播同一個學出來的波形），跟`conv_perturber.py`的CNN版共用完全相同介面，靠`generator.architecture: cnn|universal`設定分派。`configs/exp/D05_universal.yaml`已寫好（沿用D01其餘設定）。6個新測試，`tests/`現在42個測試全過；小規模smoke test（300條/3epoch，真實E01攻擊者）確認管線接線正確。**尚未跑正式15000條/40epoch GPU實驗**，詳見 `CLAUDE.md` 附錄A.14。

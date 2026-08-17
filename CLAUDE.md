@@ -116,9 +116,10 @@ Input(700,1)
 | D02 | D01 的 loss權重掃描，找出效率最好的配方 | D01 跑通 |
 | D03 | **改編號**——loss權重掃描（D02）推翻了「smooth/l2拖累效率」假設後，改測「確定性擾動 vs 高斯噪訊獨立隨機性」這個結構性假設，見附錄A.5/D03 | D02 跑通 |
 | D04 | **改編號**——SNR診斷（附錄A.8）找出真正機制（洩漏點覆蓋不完整）後，重新設計loss加入可微分洩漏抑制項，見附錄A.9/D04 | D01-D03 + SNR診斷完成 |
-| D05（原D04/D03） | 跟高斯噪訊基準曲線做 PSR 成本匹配比較（三方比較圖） | D01-D04 找到至少一個能打平/贏過高斯基準線的配方後再進行 |
-| D06（原D05/D04） | 時域干擾基準線（desync-style jamming，用攻擊端已有的 ASCAD_desync50/100 概念另外建一版） | 獨立於D01-D05，可平行做 |
-| D07（原D06/D05，延伸，未定案） | 自適應攻擊者（A1）情境：防禦部署後攻擊端重訓練 | D01-D05 有結果後再決定 |
+| D05 | **改編號**——根據B11209017/方向.md重新規劃的21天路線圖：通用擾動模板（universal perturbation，Gu式），支撐claim②「工程成本比masking低」+ Route A的第三種防禦類別對照組，見附錄A.14/D05 | D01-D04 + 方向.md路線圖確立後 |
+| D06（原D05/D04/D03） | 自適應攻擊者（A1）情境：防禦部署後攻擊端重訓練——21天路線圖的核心項目，見附錄A.9下一步 | D05跑完 |
+| D07（原D06/D05/D04） | 跟高斯噪訊基準曲線做 PSR 成本匹配比較（三方比較圖） | D01-D06 找到至少一個能打平/贏過高斯基準線的配方後再進行 |
+| D08（原D07/D06/D05） | 時域干擾基準線（desync-style jamming，用攻擊端已有的 ASCAD_desync50/100 概念另外建一版） | 獨立於D01-D07，可平行做，21天內明確不排 |
 
 ## 9. 驗收標準（草案）
 
@@ -358,3 +359,22 @@ D03_noise_high（2.85 bits）GE@9000=137.14
 **這對報告/論文敘事的意義**：這其實是Route A敘事裡一個很誠實、很有價值的觀察——**局部、univariate的洩漏抑制（不管是靠壓低SNR還是注入熵）不能保證轉換成攻擊者實際需要的軌跡數變多**，這暗示對抗式擾動防禦（不管是GAN還是搭配隨機性）如果只針對簡化的univariate洩漏模型設計/驗證，可能從根本上量錯了攻防的真正互動介面。這比單純的「D03沒用」更深刻，也是方向.md「這不是壞事…你們就從『宣稱安全但說不清楚』變成『精確知道自己防的是什麼、不防的是什麼』」這句話在這裡最直接的體現。
 
 **尚未做**：沒有嘗試推導任何形式化界（noisy leakage的正式定理），這超出本次範圍，方向.md自己也說「大學專題不一定做得完」；也還沒檢查「熵有沒有意外地打在CNN真正依賴、但我們兩個已知洩漏點沒涵蓋到的第三個地方」——這需要更完整的多變量洩漏分析，留待後續決定要不要投入。
+
+### A.14 D05設計：通用擾動模板（universal perturbation）——實作完成，尚未正式跑
+
+21天路線圖第3項（方向.md claim②的唯一前提＋Route A需要的第三種防禦類別對照組）。
+
+**設計**：新增`src/generator/universal_perturber.py::UniversalTemplate`——單一可訓練的`(trace_len, 1)`權重，`tanh`壓到`(-1,1)`後對整個batch原封不動廣播（輸入軌跡的內容完全不影響輸出，只用來讀batch size），再套用D01既有的`BoundedPerturbation`乘上epsilon。跟`conv_perturber.py`的CNN版本共用完全相同的`(trace_len,1)→(trace_len,1)`介面，所以`01_train_defender.py`／`02_generate_defended.py`不需要另外改介面，只需要新增一個`generator.architecture: cnn | universal`設定分派（`configs/base.yaml`預設`cnn`，不影響D01-D04既有行為）。訓練走完全相同的對抗訓練迴圈跟loss（`src/train/adversarial.py`一行都沒改），確保跟CNN版本唯一的差異變因就是「擾動是否隨軌跡內容調整」——PSR成本匹配下的比較才公平。
+
+**為什麼這個架構同時買到兩件事**：
+1. **Route A對照組**：per-trace FGSM（Tran式）／universal perturbation（Gu式）／learned generator（我們的CNN版）是方向.md列的三種要比較的防禦類別，這個實作補上中間那一種。
+2. **方向.md claim②的唯一前提**：「工程成本比masking低」只有在「不需要每次都跑推論引擎」的前提下才站得住腳——通用模板部署時就是一個固定波形疊加上去，不需要CNN forward pass，跟masked AES gadget或CNN推論引擎的執行期成本完全不同量級，這是唯一能讓這個主張變成純工程算術（而不是空話）的架構選擇。
+
+**已完成**：6個新測試（`tests/test_universal_perturber.py`：輸出形狀、epsilon上界、**跨軌跡輸出完全一致**這個universal的定義性質、zeros初始化下訓練前擾動精確為0、save/load round-trip、梯度確實流到`template`變數），`tests/`現在42個測試全過。小規模smoke test（300條/3epoch，真實E01攻擊者）：訓練confuse loss正常下降（6.49→6.06）、`02_generate_defended.py`正常產出`defended_traces.npy`、餵進攻擊端Stage B介面正常產出`metrics.json`——管線接線正確（此規模下PSR僅0.002，數字本身無意義，純粹驗證接線）。
+
+`configs/exp/D05_universal.yaml`已就緒（沿用D01的loss權重/epsilon/n_train/epochs，只換`generator.architecture: universal`）。**尚未跑正式15000條/40epoch GPU實驗**。
+
+### 下一步
+
+- 正式跑D05（GPU），跟D01（PSR=0.0249, GE@9000=111.84）成本匹配比較——通用模板的容量遠小於CNN（一個700維向量 vs 數萬參數的Conv1D網路），預期同樣的PSR成本下效果可能更差（表達能力不足），但這正是要誠實測出來的東西，不是預設會贏。
+- 21天路線圖下一項（D06）是自適應攻擊者（A1），是目前最重的一塊，也是Route A論述的核心。

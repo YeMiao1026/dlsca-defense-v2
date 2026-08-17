@@ -1,0 +1,19 @@
+exp_id: D05_universal
+description: >
+  D05：通用擾動模板（universal perturbation，Gu et al. 2020風格）——單一
+  可訓練向量，跟輸入軌跡內容完全無關、對每一條軌跡都套用同一個學出來的
+  波形，取代D01-D04的逐軌跡CNN產生器。跟B11209017/方向.md claim②直接
+  相關：部署時只需要儲存一個固定波形疊加上去，不需要每次都跑CNN forward
+  pass，是唯一能支撐「工程成本比masking低」這個主張的架構；同時也是
+  Route A敘事需要比較的第三種防禦類別（per-trace FGSM / universal
+  perturbation / learned generator）裡的「universal」代表。
+
+  其餘設定（loss權重、epsilon、n_train、epochs）全部沿用D01基準不變，只換
+  generator.architecture，確保PSR成本匹配下的比較是公平的（唯一變因是
+  「擾動是否隨軌跡內容調整」）。
+
+seed: 1234
+attacker: e01_baseline
+
+generator:
+  architecture: universal

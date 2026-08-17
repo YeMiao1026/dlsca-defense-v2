@@ -27,6 +27,7 @@ import yaml
 from src.bridge.attack_interface import load as load_bridge
 from src.config import load_config, snapshot
 from src.generator.conv_perturber import build_generator
+from src.generator.universal_perturber import build_universal_perturbation
 from src.train.adversarial import fit
 
 
@@ -83,9 +84,17 @@ def main() -> None:
         print(f"=== leakage_probe enabled: mask_index={mask_index}, "
               f"channels={list(leakage_labels.keys())} (CLAUDE.md A.8/A.9, D04) ===")
 
-    noise_std = cfg["generator"].get("noise_std", 0.0)
-    print(f"=== building generator (epsilon={cfg['generator']['epsilon']}, noise_std={noise_std}) ===")
-    generator = build_generator(trace_len=x_train.shape[1], epsilon=cfg["generator"]["epsilon"], noise_std=noise_std)
+    architecture = cfg["generator"].get("architecture", "cnn")
+    epsilon = cfg["generator"]["epsilon"]
+    if architecture == "cnn":
+        noise_std = cfg["generator"].get("noise_std", 0.0)
+        print(f"=== building generator (architecture=cnn, epsilon={epsilon}, noise_std={noise_std}) ===")
+        generator = build_generator(trace_len=x_train.shape[1], epsilon=epsilon, noise_std=noise_std)
+    elif architecture == "universal":
+        print(f"=== building generator (architecture=universal, epsilon={epsilon}) ===")
+        generator = build_universal_perturbation(trace_len=x_train.shape[1], epsilon=epsilon)
+    else:
+        raise ValueError(f"unknown generator.architecture: {architecture!r}")
 
     loss_cfg = cfg["train"].get("loss", {})
     print("\n=== start adversarial training ===")
