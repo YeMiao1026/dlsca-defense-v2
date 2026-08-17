@@ -79,3 +79,11 @@ Bit-split TVLA（8個bit逐bit Welch t-test取最壞值，門檻`|t|>=4.5`），
 ## D05（設計完成，尚未正式跑）
 
 `src/generator/universal_perturber.py::UniversalTemplate` 新增通用擾動模板架構（單一可訓練向量、輸出跟輸入軌跡內容無關，對每一條軌跡廣播同一個學出來的波形），跟`conv_perturber.py`的CNN版共用完全相同介面，靠`generator.architecture: cnn|universal`設定分派。`configs/exp/D05_universal.yaml`已寫好（沿用D01其餘設定）。6個新測試，`tests/`現在42個測試全過；小規模smoke test（300條/3epoch，真實E01攻擊者）確認管線接線正確。**尚未跑正式15000條/40epoch GPU實驗**，詳見 `CLAUDE.md` 附錄A.14。
+
+## D05正式跑（GPU，15000條/40epoch，早停於epoch32）
+
+| run | PSR mean | GE@9000 | GE趨勢 | SNR/TVLA變化 |
+|---|---|---|---|---|
+| `D05_universal_20260817_123955_1140658` | 0.0098（D01的39%） | 162.46（比隨機基準127.5高34.96） | N=1000→9000持續遞增（141→162），不是打平 | **精確0.0%**（可數學證明：常數擾動不可能改變SNR/TVLA） |
+
+GE曲線隨N遞增（系統性偏誤隨軌跡數累加複合增強，不像雜訊會被平均掉），但SNR/TVLA顯示這個「效果」完全不涉及任何資訊破壞——通用擾動對每條軌跡加同一個常數，SNR/TVLA的公式對常數平移數學上必然不變，不需要實驗歸納就能斷言這個防禦對安全性毫無貢獻。目前為止對Route A論述最乾淨的一組證據：GE看起來的「贏」（比D01的111.84更不收斂）可以跟真正安全性完全脫鉤，而且這裡是可證明、不是猜測。詳見 `CLAUDE.md` 附錄D。
