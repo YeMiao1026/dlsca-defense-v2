@@ -1,4 +1,5 @@
 runs/
+runs_adaptive_sweep/
 results/
 defenses*/
 __pycache__/
